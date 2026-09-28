@@ -1,13 +1,20 @@
 package main
 
 import (
+	"database/sql"
+	"go-http-server/internal/database"
 	"log"
 	"net/http"
+	"os"
 	"sync/atomic"
+
+	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 )
 
 type apiConfig struct {
 	fileserverHits atomic.Int32
+	dbQueries      *database.Queries
 }
 
 func handlerReadiness(w http.ResponseWriter, r *http.Request) {
@@ -23,15 +30,27 @@ func (cfg *apiConfig) resetServerHits(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	godotenv.Load()
+
 	const filepathRoot = "."
 	const port = "8080"
+	dbURL := os.Getenv("DB_URL")
+
+	db, err := sql.Open("postgres", dbURL)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	dbQueries := database.New(db)
 
 	route := http.NewServeMux()
 	server := &http.Server{
 		Addr:    ":" + port,
 		Handler: route,
 	}
-	apiCfg := &apiConfig{}
+	apiCfg := &apiConfig{
+		dbQueries: dbQueries,
+	}
 
 	// Define routes
 	fsHandler := apiCfg.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot))))
