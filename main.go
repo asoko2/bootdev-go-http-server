@@ -91,6 +91,7 @@ func main() {
 	route.HandleFunc("POST /api/chirps", apiCfg.handlerCreateChirp)
 
 	route.HandleFunc("POST /api/users", apiCfg.handlerCreateUser)
+	route.HandleFunc("POST /api/login", apiCfg.handlerLogin)
 
 	// Start the server
 	// Log if server is started
