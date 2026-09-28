@@ -98,6 +98,8 @@ func main() {
 
 	route.HandleFunc("POST /api/users", apiCfg.handlerCreateUser)
 	route.HandleFunc("POST /api/login", apiCfg.handlerLogin)
+	route.HandleFunc("POST /api/refresh", apiCfg.handlerRefreshToken)
+	route.HandleFunc("POST /api/revoke", apiCfg.handlerRevokeRefreshToken)
 
 	// Start the server
 	// Log if server is started
