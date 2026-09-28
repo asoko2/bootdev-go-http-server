@@ -42,5 +42,7 @@ func main() {
 	route.HandleFunc("GET /admin/metrics", apiCfg.handlerWriteServerHist)
 	route.HandleFunc("POST /admin/reset/", apiCfg.resetServerHits)
 
+	route.HandleFunc("POST /api/validate_chirp", handlerValidateChirp)
+
 	log.Fatal(server.ListenAndServe())
 }
