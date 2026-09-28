@@ -86,7 +86,7 @@ func main() {
 	route.HandleFunc("GET /admin/metrics", apiCfg.handlerWriteServerHist)
 	route.HandleFunc("POST /admin/reset", apiCfg.resetServerHits)
 
-	route.HandleFunc("POST /api/validate_chirp", handlerValidateChirp)
+	route.HandleFunc("POST /api/chirps", apiCfg.handlerCreateChirp)
 
 	route.HandleFunc("POST /api/users", apiCfg.handlerCreateUser)
 
