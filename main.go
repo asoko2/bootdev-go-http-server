@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"go-http-server/internal/database"
 	"log"
 	"net/http"
@@ -14,7 +15,8 @@ import (
 
 type apiConfig struct {
 	fileserverHits atomic.Int32
-	dbQueries      *database.Queries
+	db             *database.Queries
+	platform       string
 }
 
 func handlerReadiness(w http.ResponseWriter, r *http.Request) {
@@ -24,9 +26,23 @@ func handlerReadiness(w http.ResponseWriter, r *http.Request) {
 }
 
 func (cfg *apiConfig) resetServerHits(w http.ResponseWriter, r *http.Request) {
+	if cfg.platform != "dev" {
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte("Reset is only allowed in dev environment."))
+		return
+	}
 	cfg.fileserverHits.Store(0)
+
+	err := cfg.db.DeleteAllUsers(r.Context())
+	if err != nil {
+		fmt.Println("Failed to reset server hits and users:", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Failed to reset the database." + err.Error()))
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Hits reset"))
+	w.Write([]byte("Hits reset to 0 and database reset to initial state."))
 }
 
 func main() {
@@ -35,6 +51,13 @@ func main() {
 	const filepathRoot = "."
 	const port = "8080"
 	dbURL := os.Getenv("DB_URL")
+	if dbURL == "" {
+		log.Fatal("DB_URL must be set")
+	}
+	platform := os.Getenv("PLATFORM")
+	if platform == "" {
+		log.Fatal("PLATFORM must be set")
+	}
 
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
@@ -49,7 +72,9 @@ func main() {
 		Handler: route,
 	}
 	apiCfg := &apiConfig{
-		dbQueries: dbQueries,
+		fileserverHits: atomic.Int32{},
+		db:             dbQueries,
+		platform:       platform,
 	}
 
 	// Define routes
@@ -59,9 +84,14 @@ func main() {
 	route.HandleFunc("GET /api/healthz", handlerReadiness)
 
 	route.HandleFunc("GET /admin/metrics", apiCfg.handlerWriteServerHist)
-	route.HandleFunc("POST /admin/reset/", apiCfg.resetServerHits)
+	route.HandleFunc("POST /admin/reset", apiCfg.resetServerHits)
 
 	route.HandleFunc("POST /api/validate_chirp", handlerValidateChirp)
 
+	route.HandleFunc("POST /api/users", apiCfg.handlerCreateUser)
+
+	// Start the server
+	// Log if server is started
+	fmt.Println("Server is starting on port", port)
 	log.Fatal(server.ListenAndServe())
 }
